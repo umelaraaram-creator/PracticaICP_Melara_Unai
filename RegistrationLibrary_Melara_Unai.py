@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial import cKDTree
 
 _CORRESPONDENCE_DISTANCE_FACTOR = 1.0
 _DEFAULT_MAX_ITERATIONS = 50
@@ -11,6 +12,9 @@ def calculate_distances_and_correspondences(target, source,
     Para cada punto del source, busca su vecino más cercano en el target.
     Solo acepta parejas cuya distancia sea <= max_correspondance_distance.
 
+    Utiliza KDTree para búsqueda eficiente de vecinos más cercanos,
+    reduciendo la complejidad de O(N*M) a O(N*log(M)).
+
     Args:
         target (np.ndarray): Nube de referencia (N x dim).
         source (np.ndarray): Nube a registrar (M x dim).
@@ -20,19 +24,17 @@ def calculate_distances_and_correspondences(target, source,
         distances (np.ndarray): Distancias de las parejas aceptadas.
         correspondences (np.ndarray): Índices [source_idx, target_idx] (K x 2).
     """
-    correspondences = []
-    distances = []
+    tree = cKDTree(target)
+    nearest_distances, nearest_indices = tree.query(source, k=1)
 
-    for source_idx in range(len(source)):
-        euclidean_distances = np.linalg.norm(target - source[source_idx], axis=1)
-        nearest_target_idx = np.argmin(euclidean_distances)
-        nearest_distance = euclidean_distances[nearest_target_idx]
+    mask = nearest_distances <= max_correspondance_distance
+    valid_source_indices = np.where(mask)[0]
+    valid_target_indices = nearest_indices[mask]
+    valid_distances = nearest_distances[mask]
 
-        if nearest_distance <= max_correspondance_distance:
-            correspondences.append([source_idx, nearest_target_idx])
-            distances.append(nearest_distance)
+    correspondences = np.column_stack((valid_source_indices, valid_target_indices))
 
-    return np.array(distances), np.array(correspondences)
+    return valid_distances, correspondences
 
 
 def calculate_best_fit_transform(source, target, correspondances):
@@ -78,8 +80,8 @@ def calculate_best_fit_transform(source, target, correspondances):
 
 def transform_points(points, transformation):
     """
-    Aplica una transformación rígida a una nube de puntos mediante
-    coordenadas homogéneas. Soporta 2D y 3D.
+    Aplica una transformación rígida usando coordenadas homogéneas.
+    Soporta 2D y 3D.
 
     Args:
         points (np.ndarray): Puntos a transformar (M x dim).
@@ -113,8 +115,7 @@ def icp(target, source,
         metric_delta_threshold=_DEFAULT_METRIC_DELTA_THRESHOLD):
     """
     Iterative Closest Point para registro rígido de nubes de puntos.
-    Si max_correspondance_distance es None, se estima automáticamente
-    a partir de la separación entre las nubes.
+    Si max_correspondance_distance es None, se estima automáticamente.
 
     Criterios de parada:
         - Se alcanza max_iterations.
@@ -178,11 +179,6 @@ def _estimate_max_correspondence_distance(target, source):
     Returns:
         estimated_distance (float): Distancia máxima estimada.
     """
-    n_samples = min(50, len(source))
-    nearest_distances = []
-
-    for i in range(n_samples):
-        distances_to_target = np.linalg.norm(target - source[i], axis=1)
-        nearest_distances.append(np.min(distances_to_target))
-
+    tree = cKDTree(target)
+    nearest_distances, _ = tree.query(source, k=1)
     return np.median(nearest_distances) * _CORRESPONDENCE_DISTANCE_FACTOR
