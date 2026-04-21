@@ -103,7 +103,7 @@ def generate_registration_animation_3D(target, source, history):
         )
     plt.legend()
     
-    ani.save("Registration2DAnimation.gif", writer='pillow')
+    ani.save("Registration3DAnimation.gif", writer='pillow')
     #ani.save("Registration3DAnimation.mp4")
 
 def add_gaussian_noise_3D(points, sigma):
