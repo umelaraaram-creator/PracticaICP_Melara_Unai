@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 _CORRESPONDENCE_DISTANCE_FACTOR = 1.0
-_DEFAULT_MAX_ITERATIONS = 100
+_DEFAULT_MAX_ITERATIONS = 50
 _DEFAULT_METRIC_DELTA_THRESHOLD = 1e-6
 
 
@@ -116,9 +116,9 @@ def icp(target, source,
     Iterative Closest Point para registro rígido de nubes de puntos.
     Si max_correspondance_distance es None, se estima automáticamente.
 
-    Utiliza un max_correspondence_distance adaptativo basado en el
-    RMSE de la iteración anterior, estrechando el filtro conforme
-    el algoritmo converge.
+    Utiliza un max_correspondence_distance adaptativo que se estrecha
+    conforme el algoritmo converge, activándose tras una fase inicial
+    de alineamiento.
 
     Criterios de parada:
         - Se alcanza max_iterations.
@@ -143,6 +143,7 @@ def icp(target, source,
     min_correspondences = dim + 1
     src = source.copy()
     prev_metric = float('inf')
+    best_metric = float('inf')
     total_transformation = np.eye(dim + 1)
     history = []
     adaptive_distance = max_correspondance_distance
@@ -167,7 +168,12 @@ def icp(target, source,
             break
         prev_metric = metric
 
-        adaptive_distance = max(2.0 * metric, max_correspondance_distance * 0.05)
+        if metric < best_metric:
+            best_metric = metric
+
+        if iteration >= 10:
+            adaptive_distance = min(adaptive_distance,
+                                    max(2.0 * best_metric, 1.0))
 
     return total_transformation, history
 
