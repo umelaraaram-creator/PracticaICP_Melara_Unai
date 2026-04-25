@@ -179,9 +179,10 @@ def icp(target, source,
 
 def _estimate_max_correspondence_distance(target, source):
     """
-    Estima un max_correspondence_distance razonable usando la mediana
-    de las distancias al vecino más cercano. La mediana es robusta
-    frente a outliers.
+    Estima un max_correspondence_distance razonable usando un percentil
+    adaptativo de las distancias al vecino más cercano. El percentil se
+    ajusta según la proporción target/source para ser robusto tanto con
+    pocos como con muchos outliers.
 
     Args:
         target (np.ndarray): Nube de referencia (N x dim).
@@ -192,4 +193,5 @@ def _estimate_max_correspondence_distance(target, source):
     """
     tree = cKDTree(target)
     nearest_distances, _ = tree.query(source, k=1)
-    return np.median(nearest_distances) * _CORRESPONDENCE_DISTANCE_FACTOR
+    adaptive_percentile = min(len(target) / len(source) * 100, 50)
+    return np.percentile(nearest_distances, adaptive_percentile) * _CORRESPONDENCE_DISTANCE_FACTOR

@@ -125,6 +125,13 @@ def main():
     source = add_point_to_points(source, (-20.5,-60.5))
     source = add_point_to_points(source, (-20,-60.5))
     source = add_point_to_points(source, (-20.5,-60))
+    
+    #n_outliers = 1000
+    #angles = np.random.uniform(0, 2 * np.pi, n_outliers)
+    #radii = np.random.uniform(60, 120, n_outliers)
+    #outliers = np.column_stack((radii * np.cos(angles), radii * np.sin(angles)))
+    #source = np.vstack((source, outliers))
+
 
     # Plot inputs
     plot_inputs(target, source)
